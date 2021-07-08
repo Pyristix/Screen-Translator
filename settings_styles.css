@@ -1,0 +1,41 @@
+body {
+	background-color: RGB(45,47,51);
+	color: white;
+	font-family: calibri;
+	padding-top: 3px;
+}
+
+input[type=submit] {
+	border-radius: 5px;
+	padding-left: 20px;
+	padding-right: 20px;
+	padding-top: 7px;
+	padding-bottom: 7px;
+}
+
+input[type=text] {
+	width: 50px;
+}
+
+input[type=number] {
+	width: 50px;
+}
+
+.indent_layer_one {
+	margin-left: 20px;
+}
+
+.indent_layer_two {
+	margin-left: 40px;
+}
+
+.input_item{
+	position: absolute;
+	right: 25px;
+}
+
+#arrow{
+	position: relative;
+	top: 2px;
+}
+
