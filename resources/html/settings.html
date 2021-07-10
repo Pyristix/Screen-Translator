@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
+    <meta http-equiv="X-Content-Security-Policy" content="default-src 'self'; script-src 'self'">
+    <title>Screen Translator</title>
+	<link rel="stylesheet" href="../css/settings_styles.css">
+  </head>
+  <body>
+	<h2 class="indent_layer_one">Languages</h2>
+	
+	<select class="indent_layer_two" id="language_1" name="language_1">
+		<option value="EN">English</option>
+		<option value="JA" selected>Japanese</option>
+	</select>
+	
+	<img src="../images/arrow.png" width="35" height="12" id="arrow">
+	
+	<select id="language_2" name="language_2">
+		<option value="EN" selected>English</option>
+		<option value="JA">Japanese</option>
+	</select>
+	<br><br><br>
+    <span class="indent_layer_one">Translation key</span> <input type="text" class="input_item" id="translation_key"><br><br>
+    <span class="indent_layer_one">Automatic timer interval</span> <input type="number" min="5" max="999999" class="input_item" id="timer_interval"><br><br>
+    <span class="indent_layer_one">Automatically translate on scroll</span> <input type="checkbox" class="input_item" id="scroll_translate"><br><br>
+	<span class="indent_layer_one">Automatically translate on timer</span> <input type="checkbox" class="input_item" id="timer_translate"><br><br><br>
+	<input type="submit" class="indent_layer_one" id="submit" value="Save">
+  </body>
+  <script src="../javascript/settings_listeners.js"></script>
+</html>

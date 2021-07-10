@@ -1,7 +1,7 @@
 const path = require('path')
 const fs = require("fs");
 const async = require("async");
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 
 let settings = null;
 
@@ -9,14 +9,16 @@ function createWindow () {
 	const win = new BrowserWindow({
 		width: 550,
 		height: 410,
-		icon: "resources/icon.ico",
+		icon: "resources/images/icon.ico",
 		webPreferences: {
-			preload: path.join(__dirname, 'preload.js')
+			nodeIntegration: true,
+			contextIsolation: false
 		}
 	})
 	win.setMenu(null);
 	win.resizable = false;
-	win.loadFile('settings.html');
+	win.loadFile('resources/html/settings.html');
+	win.openDevTools();
 	
 	async.series([
 		function(callback) {
@@ -26,6 +28,34 @@ function createWindow () {
 			callback(null, "two");
 		}], 
 	);
+	
+	ipcMain.on('language_1_selected', function (event, arg){
+		console.log(arg);
+	})
+	
+	ipcMain.on('language_2_selected', function (event, arg){
+		console.log(arg);
+	})
+	
+	ipcMain.on('translation_key_selected', function (event, arg){
+		console.log(arg);
+	})
+	
+	ipcMain.on('timer_interval_selected', function (event, arg){
+		console.log(arg);
+	})
+	
+	ipcMain.on('scroll_translate_input_changed', function (event, arg){
+		console.log(arg);
+	})
+	
+	ipcMain.on('time_translate_input_changed', function (event, arg){
+		console.log(arg);
+	})
+	
+	ipcMain.on('settings_submitted', function (event, arg){
+		console.log("Submitted");
+	})
 }
 
 function saveSettings () {
