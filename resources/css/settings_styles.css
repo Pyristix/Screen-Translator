@@ -3,6 +3,7 @@ body {
 	color: white;
 	font-family: calibri;
 	padding-top: 3px;
+	user-select: none;
 }
 
 input[type=submit] {
