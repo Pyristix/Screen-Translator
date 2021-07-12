@@ -60,7 +60,7 @@ function saveDefaultSettings () {
 	fs.writeFile("config.json", JSON.stringify(
 		{language_1: "JA", 
 		 language_2: "EN", 
-		 translation_key: "Ctrl+;", 
+		 translation_key: "Ctrl+Alt+Shift", 
 		 timer_interval: 5, 
 		 scroll_translate: false, 
 		 timer_translate: true}), 
