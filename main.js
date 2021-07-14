@@ -1,7 +1,8 @@
-const path = require('path')
-const fs = require("fs");
 const async = require("async");
-const { app, BrowserWindow, ipcMain } = require('electron')
+const fs = require("fs");
+const path = require("path");
+const screenshot = require("screenshot-desktop");
+const { app, BrowserWindow, globalShortcut, ipcMain } = require("electron");
 
 let settings = null;
 
@@ -17,7 +18,7 @@ function createWindow () {
 	})
 	win.setMenu(null);
 	win.resizable = false;
-	win.loadFile('resources/html/settings.html');
+	win.loadFile("resources/html/settings.html");
 	win.openDevTools();
 	
 	async.series([
@@ -25,7 +26,8 @@ function createWindow () {
 			loadSettings(callback);
 		}, function(callback) {
 			console.log(JSON.stringify(settings));
-			win.webContents.on('did-finish-load', () => {win.webContents.send("initial_settings", settings);});
+			win.webContents.on("did-finish-load", () => {win.webContents.send("initial_settings", settings);});
+			globalShortcut.register(settings.translation_key, () => {translateScreen()});
 			callback(null, "two");
 		}], 
 	);
@@ -33,8 +35,12 @@ function createWindow () {
 	setIpcListeners();
 }
 
+function translateScreen() {
+	screenshot({filename: "./resources/screen.png"});
+}
+
 //Saves settings to config.json
-function saveSettings () {
+function saveSettings() {
 	fs.writeFile("config.json", JSON.stringify(settings), (err) => {
 		if(err) 
 			console.log(err);
@@ -44,7 +50,7 @@ function saveSettings () {
 }
 
 //Loads settings from config.json into settings object
-function loadSettings (callback) {
+function loadSettings(callback) {
 	fs.readFile("config.json", function(err, buf) {
 		if (err)
 			console.log(err);
@@ -56,11 +62,11 @@ function loadSettings (callback) {
 }
 
 //Saves default settings to config.json
-function saveDefaultSettings () {
+function saveDefaultSettings() {
 	fs.writeFile("config.json", JSON.stringify(
 		{language_1: "JA", 
 		 language_2: "EN", 
-		 translation_key: "Ctrl+Alt+Shift", 
+		 translation_key: "Ctrl+Shift+A", 
 		 timer_interval: 5, 
 		 scroll_translate: false, 
 		 timer_translate: true}), 
@@ -69,38 +75,42 @@ function saveDefaultSettings () {
 }
 
 //Sets ipc event listeners to listen for changes to settings and change settings object appropriately
-function setIpcListeners () {
-	ipcMain.on('language_1_selected', function (event, arg){
+function setIpcListeners() {
+	ipcMain.on("language_1_selected", function(event, arg) {
 		console.log(arg);
 		settings.language_1 = arg;
 	});
 	
-	ipcMain.on('language_2_selected', function (event, arg){
+	ipcMain.on("language_2_selected", function(event, arg) {
 		console.log(arg);
 		settings.language_2 = arg;
 	});
 	
-	ipcMain.on('translation_key_selected', function (event, arg){
+	ipcMain.on("translation_key_selected", function(event, arg) {
 		console.log(arg);
+		if(settings.translation_key !== "")
+			globalShortcut.unregister(settings.translation_key);
 		settings.translation_key = arg;
+		if(settings.translation_key !== "")
+			globalShortcut.register(settings.translation_key, () => {translateScreen()});
 	});
 	
-	ipcMain.on('timer_interval_selected', function (event, arg){
+	ipcMain.on("timer_interval_selected", function(event, arg) {
 		console.log(arg);
 		settings.timer_interval = arg;
 	});
 	
-	ipcMain.on('scroll_translate_input_changed', function (event, arg){
+	ipcMain.on("scroll_translate_input_changed", function(event, arg) {
 		console.log(arg);
 		settings.scroll_translate = arg;
 	});
 	
-	ipcMain.on('time_translate_input_changed', function (event, arg){
+	ipcMain.on("time_translate_input_changed", function(event, arg) {
 		console.log(arg);
 		settings.timer_translate = arg;
 	});
 	
-	ipcMain.on('settings_submitted', function (event, arg){
+	ipcMain.on("settings_submitted", function(event, arg) {
 		saveSettings();
 		console.log("Submitted");
 		console.log(JSON.stringify(settings));
@@ -113,7 +123,7 @@ app.whenReady().then(() => {
 })
 
 //Closes window when all windows are closed
-app.on('window-all-closed', function () {
-	if (process.platform !== 'darwin') 
+app.on("window-all-closed", function() {
+	if (process.platform !== "darwin") 
 		app.quit();
 })

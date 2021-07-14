@@ -1,12 +1,12 @@
-const ipcRenderer = require('electron').ipcRenderer;
+const ipcRenderer = require("electron").ipcRenderer;
 
-const language_1_input = document.getElementById('language_1');
-const language_2_input = document.getElementById('language_2');
-const translation_key_input = document.getElementById('translation_key');
-const automatic_timer_input = document.getElementById('timer_interval');
-const scroll_translate_input = document.getElementById('scroll_translate');
-const timer_translate_input = document.getElementById('timer_translate');
-const submit_button = document.getElementById('submit');
+const language_1_input = document.getElementById("language_1");
+const language_2_input = document.getElementById("language_2");
+const translation_key_input = document.getElementById("translation_key");
+const automatic_timer_input = document.getElementById("timer_interval");
+const scroll_translate_input = document.getElementById("scroll_translate");
+const timer_translate_input = document.getElementById("timer_translate");
+const submit_button = document.getElementById("submit");
 
 const accepted_key_inputs = [16, 17, 18, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123];
 let tki_pressed_keys = [];
@@ -40,6 +40,12 @@ function string_to_CharCode(str) {
 		return str.charCodeAt(0);
 }
 
+//Checks if a translation key combination contains 
+function contains_nonmodifier_key (translation_key_str) {
+	let key_array = displayed_translation_key.split("+").filter(word => word != "Shift" && word != "Ctrl" && word != "Alt");
+	return key_array.length > 0;
+}
+
 //Sets initial settings on the html page upon startup
 ipcRenderer.on("initial_settings", function(event, arg) {
 	language_1_input.value = arg.language_1;
@@ -54,25 +60,28 @@ ipcRenderer.on("initial_settings", function(event, arg) {
 //	Sends events to main process when settings are changed
 //
 
-language_1_input.addEventListener('input', () => {
-	ipcRenderer.send('language_1_selected', language_1_input.value)
+language_1_input.addEventListener("input", () => {
+	ipcRenderer.send("language_1_selected", language_1_input.value)
 })
 
-language_2_input.addEventListener('input', () => {
-	ipcRenderer.send('language_2_selected', language_2_input.value)
+language_2_input.addEventListener("input", () => {
+	ipcRenderer.send("language_2_selected", language_2_input.value)
 })
 
 //Prevents doubling up of translation key input on-screen
-translation_key_input.addEventListener('input', () => {
-	if (translation_key.value !== displayed_translation_key)
-		translation_key.value = displayed_translation_key;
+translation_key_input.addEventListener("input", () => {
+	console.log("translation_key_input.value: " + translation_key_input.value + "  displayed_translation_key: " + displayed_translation_key)
+	if (translation_key_input.value !== displayed_translation_key)
+		translation_key_input.value = displayed_translation_key;
 })
 
-translation_key_input.addEventListener('keydown', (event) => {
+translation_key_input.addEventListener("keydown", (event) => {
 	if (tki_pressed_keys.length < 3 && !(tki_pressed_keys.includes(event.keyCode)) && accepted_key_inputs.includes(event.keyCode)) {
 		tki_pressed_keys.push(event.keyCode);
 	}
+	
 	displayed_translation_key = "";
+	
 	for (let i = 0; i < tki_pressed_keys.length; i++) {
 		if (i === tki_pressed_keys.length - 1){
 			displayed_translation_key += CharCode_to_string(tki_pressed_keys[i]);
@@ -81,18 +90,24 @@ translation_key_input.addEventListener('keydown', (event) => {
 			displayed_translation_key += CharCode_to_string(tki_pressed_keys[i]) + "+";
 		}
 	}
+	//Makes sure there are more than just some combination than Ctrl, Alt, and Shift
+	if (!(contains_nonmodifier_key(displayed_translation_key)))
+		displayed_translation_key = "";
+	
+	//This line changes the input value to displayed_transition_key in case the key combo isn't counted
+	//as input by the input event handler. (i.e. when Ctrl or Alt are included in the key combo)
 	translation_key_input.value = displayed_translation_key;
-	ipcRenderer.send('translation_key_selected', translation_key.value)
+	ipcRenderer.send("translation_key_selected", displayed_translation_key)
 })
 
-translation_key_input.addEventListener('keyup', (event) => {
+translation_key_input.addEventListener("keyup", (event) => {
 	let released_key_index = tki_pressed_keys.indexOf(event.keyCode);
 	if (released_key_index !== -1)
 		tki_pressed_keys.splice(released_key_index, 1);
 })
 
 
-automatic_timer_input.addEventListener('input', () => {
+automatic_timer_input.addEventListener("input", () => {
 	let validated_timer_value = automatic_timer_input.value;
 	if(validated_timer_value < 5){
 		validated_timer_value = 5;
@@ -102,17 +117,17 @@ automatic_timer_input.addEventListener('input', () => {
 		automatic_timer_input.value = 9999;
 	}
 	
-	ipcRenderer.send('timer_interval_selected', validated_timer_value)
+	ipcRenderer.send("timer_interval_selected", validated_timer_value)
 })
 
-scroll_translate_input.addEventListener('input', () => {
-	ipcRenderer.send('scroll_translate_input_changed', scroll_translate_input.checked);
+scroll_translate_input.addEventListener("input", () => {
+	ipcRenderer.send("scroll_translate_input_changed", scroll_translate_input.checked);
 })
 
-timer_translate_input.addEventListener('input', () => {
-	ipcRenderer.send('time_translate_input_changed', timer_translate_input.checked);
+timer_translate_input.addEventListener("input", () => {
+	ipcRenderer.send("time_translate_input_changed", timer_translate_input.checked);
 })
 
-submit_button.addEventListener('click', () => {
-	ipcRenderer.send('settings_submitted', "test");
+submit_button.addEventListener("click", () => {
+	ipcRenderer.send("settings_submitted", "test");
 })
