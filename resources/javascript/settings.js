@@ -4,7 +4,7 @@ const language_1_input = document.getElementById("language_1");
 const language_2_input = document.getElementById("language_2");
 const translation_key_input = document.getElementById("translation_key");
 const automatic_timer_input = document.getElementById("timer_interval");
-const scroll_translate_input = document.getElementById("scroll_translate");
+const enable_translation_key_input = document.getElementById("enable_translation_key");
 const timer_translate_input = document.getElementById("timer_translate");
 const submit_button = document.getElementById("submit");
 
@@ -52,7 +52,7 @@ ipcRenderer.on("initial_settings", function(event, arg) {
 	language_2_input.value = arg.language_2;
 	translation_key_input.value = arg.translation_key;
 	automatic_timer_input.value = arg.timer_interval;
-	scroll_translate_input.checked = arg.scroll_translate;
+	enable_translation_key.checked = arg.enable_translation_key;
 	timer_translate_input.checked = arg.timer_translate;
 });
 
@@ -120,12 +120,12 @@ automatic_timer_input.addEventListener("input", () => {
 	ipcRenderer.send("timer_interval_selected", validated_timer_value)
 })
 
-scroll_translate_input.addEventListener("input", () => {
-	ipcRenderer.send("scroll_translate_input_changed", scroll_translate_input.checked);
+enable_translation_key_input.addEventListener("input", () => {
+	ipcRenderer.send("enable_translation_key_input_changed", enable_translation_key_input.checked);
 })
 
 timer_translate_input.addEventListener("input", () => {
-	ipcRenderer.send("time_translate_input_changed", timer_translate_input.checked);
+	ipcRenderer.send("timer_translate_input_changed", timer_translate_input.checked);
 })
 
 submit_button.addEventListener("click", () => {
