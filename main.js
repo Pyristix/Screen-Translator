@@ -42,13 +42,34 @@ async function translateScreen() {
 	screenshot({filename: "./resources/screen.png"});
 	
 	// Creates a client
-	const client = new vision.ImageAnnotatorClient();
+	let client = new vision.ImageAnnotatorClient();
+	
+	const request = {
+		"requests": [{
+			"image": {
+				"content": fs.readFileSync("./resources/screen.png")
+			},
+			"features": [{
+				"type": "DOCUMENT_TEXT_DETECTION"
+			}],
+			"imageContext": {
+			  "languageHints": ["ja"]
+			}
+		}]
+	};
 
 	// Performs text detection on the local file
-	const [result] = await client.textDetection("./resources/screen.png");
+	const [result] = await client.textDetection("./resources/screen.png"); //await client.batchAnnotateImages(request);
+	
 	const detections = result.textAnnotations;
 	console.log('Text:');
 	detections.forEach(text => console.log(text));
+	
+	/*const detections = result.responses[0].fullTextAnnotation;
+	console.log(detections.text);*/
+
+	
+
 }
 
 //Saves settings to config.json
@@ -143,6 +164,7 @@ function setIpcListeners() {
 //Creates window when the app is ready
 app.whenReady().then(() => {
 	createWindow();
+	process.env.GOOGLE_APPLICATION_CREDENTIALS = "./resources/screen-translator-319920-990533b3822e.json";
 })
 
 //Closes window when all windows are closed
