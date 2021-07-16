@@ -41,35 +41,37 @@ function createWindow () {
 async function translateScreen() {
 	screenshot({filename: "./resources/screen.png"});
 	
-	// Creates a client
-	let client = new vision.ImageAnnotatorClient();
-	
-	const request = {
-		"requests": [{
-			"image": {
-				"content": fs.readFileSync("./resources/screen.png")
-			},
-			"features": [{
-				"type": "DOCUMENT_TEXT_DETECTION"
-			}],
-			"imageContext": {
-			  "languageHints": ["ja"]
-			}
-		}]
-	};
+	//googleVisionDetect();
+}
 
-	// Performs text detection on the local file
-	const [result] = await client.textDetection("./resources/screen.png"); //await client.batchAnnotateImages(request);
-	
-	const detections = result.textAnnotations;
-	console.log('Text:');
-	detections.forEach(text => console.log(text));
-	
-	/*const detections = result.responses[0].fullTextAnnotation;
-	console.log(detections.text);*/
 
-	
+async function googleVisionDetect() {
+	const detected_text_array = (await client.textDetection('./resources/screen_compressed.png'))[0].textAnnotations;
 
+	if(result_array.length > 0){
+		let language_filtered_array = languageFilterText(detected_text_array);
+		console.log("placeholder")
+	}
+	console.log(JSON.stringify(result_array[0]));
+	
+}
+
+function languageFilterText(detected_text_array) {
+	let accepted_characters = "";
+	let language_filtered_array = [];
+	
+	if (settings.language_1 === "jp")
+		accepted_characters = "/[一-龠]|[ぁ-ゔ]|[ァ-ヴー]|[０-９]|[々〆〤]/u";
+	else 
+		accepted_characters = "/[a-zA-Z]";
+	
+	for (let i = 0; i < detected_text_array.length; i++){
+		if(detected_text_array.length !== 1)
+			continue;
+		//Logic for filtering here
+	}
+		
+	//Need to also filter out "\n"
 }
 
 //Saves settings to config.json
@@ -161,11 +163,14 @@ function setIpcListeners() {
 	});
 }
 
+
 //Creates window when the app is ready
 app.whenReady().then(() => {
 	createWindow();
 	process.env.GOOGLE_APPLICATION_CREDENTIALS = "./resources/screen-translator-319920-990533b3822e.json";
 })
+
+let client = new vision.ImageAnnotatorClient();
 
 //Closes window when all windows are closed
 app.on("window-all-closed", function() {
