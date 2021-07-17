@@ -52,8 +52,8 @@ ipcRenderer.on("initial_settings", function(event, arg) {
 	language_2_input.value = arg.language_2;
 	translation_key_input.value = arg.translation_key;
 	automatic_timer_input.value = arg.timer_interval;
-	enable_translation_key.checked = arg.enable_translation_key;
-	timer_translate_input.checked = arg.timer_translate;
+	timer_translate_input.checked = arg.timer_translate_enabled;
+	enable_translation_key.checked = arg.translation_key_enabled;
 });
 
 //

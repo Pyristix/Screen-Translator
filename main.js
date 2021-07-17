@@ -32,7 +32,7 @@ function createWindow () {
 			if(settings.translation_key_enabled && settings.translation_key !== "")
 				globalShortcut.register(settings.translation_key, () => {translateScreen()});
 			callback(null, "two");
-		}], 
+		}]
 	);
 	
 	setIpcListeners();
@@ -40,38 +40,86 @@ function createWindow () {
 
 async function translateScreen() {
 	screenshot({filename: "./resources/screen.png"});
+	let windowArray = [];
+	let text_block_array = null;
 	
-	//googleVisionDetect();
-}
-
-
-async function googleVisionDetect() {
-	const detected_text_array = (await client.textDetection('./resources/screen_compressed.png'))[0].textAnnotations;
-
-	if(result_array.length > 0){
-		let language_filtered_array = languageFilterText(detected_text_array);
-		console.log("placeholder")
+	console.log("Test1")
+	text_block_array = await googleVisionDetect();
+	console.log("Test2")
+	console.log(text_block_array[0].text)
+	
+	for (let i = 0; i < text_block_array.length; i++){
+		windowArray.push(new BrowserWindow({
+			x: Math.min(text_block_array[i].boundingBox[0].x, text_block_array[i].boundingBox[3].x),
+			y: Math.min(text_block_array[i].boundingBox[0].y, text_block_array[i].boundingBox[1].y),
+			width: Math.max(text_block_array[i].boundingBox[1].x, text_block_array[i].boundingBox[2].x) - Math.min(text_block_array[i].boundingBox[0].x, text_block_array[i].boundingBox[3].x),
+			height: Math.max(text_block_array[i].boundingBox[2].y, text_block_array[i].boundingBox[3].y) - Math.min(text_block_array[i].boundingBox[0].y, text_block_array[i].boundingBox[1].y),
+			icon: "resources/images/icon.ico",
+			webPreferences: {
+				nodeIntegration: true,
+				contextIsolation: false
+			}
+		}));
 	}
-	console.log(JSON.stringify(result_array[0]));
+	
+
+	//win.setMenu(null);
+	//win.resizable = false;
+	//win.loadFile("resources/html/settings.html");
 	
 }
 
-function languageFilterText(detected_text_array) {
-	let accepted_characters = "";
+
+
+//Returns an array of objects containing blocks of text in the desired language and their bounding boxes
+async function googleVisionDetect() {
+	const detected_text_array = await client.textDetection('./resources/screen_compressed.png');
+	let adjusted_text_array = [];
+	
+	try{
+		for (let page in detected_text_array[0].fullTextAnnotation.pages) {
+			for (let block in detected_text_array[0].fullTextAnnotation.pages[page].blocks){
+				let block_text = "";
+				for (let paragraph in detected_text_array[0].fullTextAnnotation.pages[page].blocks[block].paragraphs){
+					for (let word in detected_text_array[0].fullTextAnnotation.pages[page].blocks[block].paragraphs[paragraph].words){
+						for (let symbol in detected_text_array[0].fullTextAnnotation.pages[page].blocks[block].paragraphs[paragraph].words[word].symbols){
+							block_text += detected_text_array[0].fullTextAnnotation.pages[page].blocks[block].paragraphs[paragraph].words[word].symbols[symbol].text;
+						}
+					}
+				}
+				//Only takes the concatenated text from each block and its bounding box info
+				adjusted_text_array.push({
+					"text": block_text,
+					"boundingBox": detected_text_array[0].fullTextAnnotation.pages[page].blocks[block].boundingBox.vertices
+				});
+			}
+		}
+	} catch (error) {
+		console.log("Google Vision results processing error:\n" + error);
+		return;
+	}
+
+	if(adjusted_text_array.length > 0)
+		return languageFilterText(adjusted_text_array);
+	
+	return adjusted_text_array;
+}
+
+//Filters out blocks of text that don't contain instances of language_1
+function languageFilterText(adjusted_text_array) {
+	let accepted_regex = null;
 	let language_filtered_array = [];
 	
-	if (settings.language_1 === "jp")
-		accepted_characters = "/[一-龠]|[ぁ-ゔ]|[ァ-ヴー]|[０-９]|[々〆〤]/u";
+	if (settings.language_1 === "JA")
+		accepted_regex = new RegExp("[一-龠]|[ぁ-ゔ]|[ァ-ヴー]|[々〆〤]");
 	else 
-		accepted_characters = "/[a-zA-Z]";
+		accepted_regex = new RegExp("[a-zA-Z]");
 	
-	for (let i = 0; i < detected_text_array.length; i++){
-		if(detected_text_array.length !== 1)
-			continue;
-		//Logic for filtering here
-	}
+	for (let i = 0; i < adjusted_text_array.length; i++)
+		if(accepted_regex.test(adjusted_text_array[i].text))
+			language_filtered_array.push(adjusted_text_array[i]);
 		
-	//Need to also filter out "\n"
+	return language_filtered_array;
 }
 
 //Saves settings to config.json
