@@ -1,12 +1,16 @@
 const async = require("async");
+const https = require('https');
 const fs = require("fs");
 const path = require("path");
 const screenshot = require("screenshot-desktop");
 const vision = require("@google-cloud/vision");
 const { app, BrowserWindow, globalShortcut, ipcMain } = require("electron");
 
+let translation_window_array = [];
 let settings = null;
 let translate_timer = null;
+let translations_up = false;
+let scale_factor = 1280/1920;
 
 function createWindow () {
 	const win = new BrowserWindow({
@@ -18,6 +22,7 @@ function createWindow () {
 			contextIsolation: false
 		}
 	})
+	
 	win.setMenu(null);
 	win.resizable = false;
 	win.loadFile("resources/html/settings.html");
@@ -35,25 +40,50 @@ function createWindow () {
 		}]
 	);
 	
+	win.on("close", function () {
+		for (let i = 0; i < translation_window_array.length; i++)
+			translation_window_array[i].close();
+	})
+	
 	setIpcListeners();
 }
 
 async function translateScreen() {
-	screenshot({filename: "./resources/screen.png"});
-	let windowArray = [];
-	let text_block_array = null;
+	for (let i = 0; i < translation_window_array.length; i++)
+		translation_window_array[i].close();
+	translation_window_array = [];
 	
-	console.log("Test1")
+	if(translations_up){
+		translations_up = false;
+		return;
+	}
+		
+	await screenshot({filename: "./resources/screen.png"});
+	
+	let text_block_array = null;
 	text_block_array = await googleVisionDetect();
-	console.log("Test2")
+	
+	if(text_block_array.length === 0)
+		return;
+	
 	console.log(text_block_array[0].text)
 	
 	for (let i = 0; i < text_block_array.length; i++){
-		windowArray.push(new BrowserWindow({
-			x: Math.min(text_block_array[i].boundingBox[0].x, text_block_array[i].boundingBox[3].x),
-			y: Math.min(text_block_array[i].boundingBox[0].y, text_block_array[i].boundingBox[1].y),
-			width: Math.max(text_block_array[i].boundingBox[1].x, text_block_array[i].boundingBox[2].x) - Math.min(text_block_array[i].boundingBox[0].x, text_block_array[i].boundingBox[3].x),
-			height: Math.max(text_block_array[i].boundingBox[2].y, text_block_array[i].boundingBox[3].y) - Math.min(text_block_array[i].boundingBox[0].y, text_block_array[i].boundingBox[1].y),
+		console.log(text_block_array[i].text + ": " + JSON.stringify(text_block_array[i].boundingBox))
+		let x = Math.round(Math.min(text_block_array[i].boundingBox[0].x, text_block_array[i].boundingBox[1].x, text_block_array[i].boundingBox[2].x, text_block_array[i].boundingBox[3].x)*scale_factor);
+		let y = Math.round(Math.min(text_block_array[i].boundingBox[0].y, text_block_array[i].boundingBox[1].y, text_block_array[i].boundingBox[2].y, text_block_array[i].boundingBox[3].y)*scale_factor);
+		let width = Math.round((Math.max(text_block_array[i].boundingBox[0].x, text_block_array[i].boundingBox[1].x, text_block_array[i].boundingBox[2].x, text_block_array[i].boundingBox[3].x)*scale_factor - x));
+		let height = Math.round((Math.max(text_block_array[i].boundingBox[0].y, text_block_array[i].boundingBox[1].y, text_block_array[i].boundingBox[2].y, text_block_array[i].boundingBox[3].y)*scale_factor - y));
+		console.log("1. " + x)
+		console.log("2. " + y)
+		console.log("3. " + width)
+		console.log("4. " + height)
+		translation_window_array.push(new BrowserWindow({
+			x: x,
+			y: y,
+			width: width,
+			height: height,
+			frame: false,
 			icon: "resources/images/icon.ico",
 			webPreferences: {
 				nodeIntegration: true,
@@ -62,18 +92,20 @@ async function translateScreen() {
 		}));
 	}
 	
-
-	//win.setMenu(null);
-	//win.resizable = false;
-	//win.loadFile("resources/html/settings.html");
+	for (let i = 0; i < translation_window_array.length; i++){
+		translation_window_array[i].loadFile("resources/html/translation_box.html");
+		translation_window_array[i].setAlwaysOnTop(true);
+		translation_window_array[i].webContents.on("did-finish-load", () => {
+			translation_window_array[i].webContents.send("send_translation", getDeepLTranslation(text_block_array[i].text));
+		});
+	}
 	
+	translations_up = true;
 }
-
-
 
 //Returns an array of objects containing blocks of text in the desired language and their bounding boxes
 async function googleVisionDetect() {
-	const detected_text_array = await client.textDetection('./resources/screen_compressed.png');
+	const detected_text_array = await client.textDetection('./resources/screen.png');
 	let adjusted_text_array = [];
 	
 	try{
@@ -120,6 +152,23 @@ function languageFilterText(adjusted_text_array) {
 			language_filtered_array.push(adjusted_text_array[i]);
 		
 	return language_filtered_array;
+}
+
+function getDeepLTranslation(text_to_translate) {
+	let translation = "Test";
+	
+	https.get('https://api-free.deepl.com/v2/translate?auth_key=e5a36703-2001-1b8b-968c-a981fdca7036:fx&text=' + text_to_translate + "&target_lang=" + settings.language_2, (resp) => {
+		let data = '';
+		resp.on('data', (chunk) => {data += chunk;});
+		// The whole response has been received. Print out the result.
+		resp.on('end', () => {
+			console.log(JSON.parse(data).translations[0].text);
+			translation = JSON.parse(data).translations[0].text;
+			console.log("Testing: " + translation)
+		});
+	}).on("error", (err) => {console.log("Error: " + err.message);});
+	
+	return translation;
 }
 
 //Saves settings to config.json
