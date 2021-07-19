@@ -1,4 +1,3 @@
-const async = require("async");
 const https = require('https');
 const fs = require("fs");
 const path = require("path");
@@ -10,8 +9,8 @@ let translation_window_array = [];
 let settings = null;
 let translate_timer = null;
 let translations_up = false;
-let scale_factor = 1280/1920;
 
+//Creates initial settings window
 function createWindow () {
 	const win = new BrowserWindow({
 		width: 550,
@@ -26,19 +25,8 @@ function createWindow () {
 	win.setMenu(null);
 	win.resizable = false;
 	win.loadFile("resources/html/settings.html");
-	win.openDevTools();
 	
-	async.series([
-		function(callback) {
-			loadSettings(callback);
-		}, function(callback) {
-			console.log(JSON.stringify(settings));
-			win.webContents.on("did-finish-load", () => {win.webContents.send("initial_settings", settings);});
-			if(settings.translation_key_enabled && settings.translation_key !== "")
-				globalShortcut.register(settings.translation_key, () => {translateScreen()});
-			callback(null, "two");
-		}]
-	);
+	loadSettings(win);
 	
 	win.on("close", function () {
 		for (let i = 0; i < translation_window_array.length; i++)
@@ -48,6 +36,7 @@ function createWindow () {
 	setIpcListeners();
 }
 
+//Creates frameless windows that display translations of any instances of language_1 onscreen
 async function translateScreen() {
 	for (let i = 0; i < translation_window_array.length; i++)
 		translation_window_array[i].close();
@@ -66,37 +55,33 @@ async function translateScreen() {
 	if(text_block_array.length === 0)
 		return;
 	
-	console.log(text_block_array[0].text)
-	
 	for (let i = 0; i < text_block_array.length; i++){
-		console.log(text_block_array[i].text + ": " + JSON.stringify(text_block_array[i].boundingBox))
-		let x = Math.round(Math.min(text_block_array[i].boundingBox[0].x, text_block_array[i].boundingBox[1].x, text_block_array[i].boundingBox[2].x, text_block_array[i].boundingBox[3].x)*scale_factor);
-		let y = Math.round(Math.min(text_block_array[i].boundingBox[0].y, text_block_array[i].boundingBox[1].y, text_block_array[i].boundingBox[2].y, text_block_array[i].boundingBox[3].y)*scale_factor);
-		let width = Math.round((Math.max(text_block_array[i].boundingBox[0].x, text_block_array[i].boundingBox[1].x, text_block_array[i].boundingBox[2].x, text_block_array[i].boundingBox[3].x)*scale_factor - x));
-		let height = Math.round((Math.max(text_block_array[i].boundingBox[0].y, text_block_array[i].boundingBox[1].y, text_block_array[i].boundingBox[2].y, text_block_array[i].boundingBox[3].y)*scale_factor - y));
-		console.log("1. " + x)
-		console.log("2. " + y)
-		console.log("3. " + width)
-		console.log("4. " + height)
+		let x = Math.round(Math.min(text_block_array[i].boundingBox[0].x, text_block_array[i].boundingBox[1].x, text_block_array[i].boundingBox[2].x, text_block_array[i].boundingBox[3].x)*settings.scale_factor);
+		let y = Math.round(Math.min(text_block_array[i].boundingBox[0].y, text_block_array[i].boundingBox[1].y, text_block_array[i].boundingBox[2].y, text_block_array[i].boundingBox[3].y)*settings.scale_factor);
+		let width = Math.round((Math.max(text_block_array[i].boundingBox[0].x, text_block_array[i].boundingBox[1].x, text_block_array[i].boundingBox[2].x, text_block_array[i].boundingBox[3].x)*settings.scale_factor - x));
+		let height = Math.round((Math.max(text_block_array[i].boundingBox[0].y, text_block_array[i].boundingBox[1].y, text_block_array[i].boundingBox[2].y, text_block_array[i].boundingBox[3].y)*settings.scale_factor - y));
 		translation_window_array.push(new BrowserWindow({
 			x: x,
 			y: y,
 			width: width,
 			height: height,
 			frame: false,
+			skipTaskbar: true,
 			icon: "resources/images/icon.ico",
 			webPreferences: {
 				nodeIntegration: true,
 				contextIsolation: false
 			}
 		}));
+		translations_up = true;
 	}
 	
 	for (let i = 0; i < translation_window_array.length; i++){
+		const translation = await getDeepLTranslation(text_block_array[i].text);
 		translation_window_array[i].loadFile("resources/html/translation_box.html");
 		translation_window_array[i].setAlwaysOnTop(true);
 		translation_window_array[i].webContents.on("did-finish-load", () => {
-			translation_window_array[i].webContents.send("send_translation", getDeepLTranslation(text_block_array[i].text));
+			translation_window_array[i].webContents.send("send_translation", translation);
 		});
 	}
 	
@@ -154,21 +139,20 @@ function languageFilterText(adjusted_text_array) {
 	return language_filtered_array;
 }
 
-function getDeepLTranslation(text_to_translate) {
-	let translation = "Test";
-	
-	https.get('https://api-free.deepl.com/v2/translate?auth_key=e5a36703-2001-1b8b-968c-a981fdca7036:fx&text=' + text_to_translate + "&target_lang=" + settings.language_2, (resp) => {
-		let data = '';
-		resp.on('data', (chunk) => {data += chunk;});
-		// The whole response has been received. Print out the result.
-		resp.on('end', () => {
-			console.log(JSON.parse(data).translations[0].text);
-			translation = JSON.parse(data).translations[0].text;
-			console.log("Testing: " + translation)
+//Returns promise for the text of a deepL translation of the argument
+function getDeepLTranslation(text_to_translate) {	
+	return new Promise((resolve,reject) => {
+		https.get('https://api-free.deepl.com/v2/translate?auth_key=e5a36703-2001-1b8b-968c-a981fdca7036:fx&text=' + text_to_translate + "&target_lang=" + settings.language_2, (resp) => {
+			let data = '';
+			resp.on('data', (chunk) => {data += chunk;});
+			// The whole response has been received. Print out the result.
+			resp.on('end', () => {
+				resolve(JSON.parse(data).translations[0].text);
+			});
+		}).on("error", (err) => {
+			console.log(err.message);
 		});
-	}).on("error", (err) => {console.log("Error: " + err.message);});
-	
-	return translation;
+	})
 }
 
 //Saves settings to config.json
@@ -176,21 +160,25 @@ function saveSettings() {
 	fs.writeFile("config.json", JSON.stringify(settings), (err) => {
 		if(err) 
 			console.log(err);
-		else
-			console.log("Settings saved");
 	});
 }
 
-//Loads settings from config.json into settings object
-function loadSettings(callback) {
-	fs.readFile("config.json", function(err, buf) {
-		if (err)
-			console.log(err);
-		else{
-			settings = JSON.parse(buf);
-			callback(null, "one");
-		}
-	})
+//Loads settings from config.json into settings object, sends initial settings to renderer, and registers translation key hotkey
+function loadSettings(win) {
+	return new Promise((resolve, reject) => {
+		fs.readFile("config.json", function(err, buf) {
+			if (err)
+				console.log(err);
+			else{
+				settings = JSON.parse(buf);
+				resolve();
+			}
+		});
+	}).then(() => {	
+		if(settings.translation_key !== "")
+			globalShortcut.register(settings.translation_key, () => {translateScreen()});
+		win.webContents.on("did-finish-load", () => {win.webContents.send("initial_settings", settings);});
+	});
 }
 
 //Saves default settings to config.json
@@ -199,36 +187,40 @@ function saveDefaultSettings() {
 		{language_1: "JA", 
 		 language_2: "EN", 
 		 translation_key: "Ctrl+Shift+A", 
+		 scale_factor: 0.66,
 		 timer_interval: 5, 
-		 timer_translate_enabled: true, 
-		 translation_key_enabled: false}), 
-		(err) => {if(err) console.log(err); console.log("Settings saved");}
+		 timer_translate_enabled: true
+		}), 
+		(err) => {
+			if(err) 
+				console.log(err);
+		}
 	);
 }
 
 //Sets ipc event listeners to listen for changes to settings and change settings object appropriately
 function setIpcListeners() {
 	ipcMain.on("language_1_selected", function(event, arg) {
-		console.log(arg);
 		settings.language_1 = arg;
 	});
 	
 	ipcMain.on("language_2_selected", function(event, arg) {
-		console.log(arg);
 		settings.language_2 = arg;
 	});
 	
 	ipcMain.on("translation_key_selected", function(event, arg) {
-		console.log(arg);
-		if(settings.translation_key_enabled && settings.translation_key !== "")
+		if(settings.translation_key !== "")
 			globalShortcut.unregister(settings.translation_key);
 		settings.translation_key = arg;
-		if(settings.translation_key_enabled && settings.translation_key !== "")
+		if(settings.translation_key !== "")
 			globalShortcut.register(settings.translation_key, () => {translateScreen()});
 	});
 	
+	ipcMain.on("scale_factor_selected", function(event, arg) {
+		settings.scale_factor = arg;
+	});
+	
 	ipcMain.on("timer_interval_selected", function(event, arg) {
-		console.log(arg);
 		settings.timer_interval = arg;
 		if(settings.timer_translate_enabled){
 			clearInterval(translate_timer);
@@ -237,36 +229,25 @@ function setIpcListeners() {
 	});
 	
 	ipcMain.on("timer_translate_input_changed", function(event, arg) {
-		console.log(arg);
 		settings.timer_translate_enabled = arg;
 		clearInterval(translate_timer);
 		if(settings.timer_translate_enabled)
 			translate_timer = setInterval(translateScreen, settings.timer_interval*1000);
 	});
 	
-	ipcMain.on("enable_translation_key_input_changed", function(event, arg) {
-		console.log(arg);
-		settings.translation_key_enabled = arg;
-		if(settings.translation_key_enabled)
-			globalShortcut.register(settings.translation_key, () => {translateScreen()});
-		else
-			globalShortcut.unregister(settings.translation_key);
-	});
-	
 	ipcMain.on("settings_submitted", function(event, arg) {
 		saveSettings();
-		console.log("Submitted");
-		console.log(JSON.stringify(settings));
 	});
 }
 
 
-//Creates window when the app is ready
+//Creates window when the app is ready and sets Google Vision credentials
 app.whenReady().then(() => {
 	createWindow();
-	process.env.GOOGLE_APPLICATION_CREDENTIALS = "./resources/screen-translator-319920-990533b3822e.json";
+	process.env.GOOGLE_APPLICATION_CREDENTIALS = "./resources/credentials.json";
 })
 
+//Starts up Google Vision instance
 let client = new vision.ImageAnnotatorClient();
 
 //Closes window when all windows are closed

@@ -1,10 +1,9 @@
 const ipcRenderer = require("electron").ipcRenderer;
-
 const language_1_input = document.getElementById("language_1");
 const language_2_input = document.getElementById("language_2");
 const translation_key_input = document.getElementById("translation_key");
+const scale_factor_input = document.getElementById("scale_factor");
 const automatic_timer_input = document.getElementById("timer_interval");
-const enable_translation_key_input = document.getElementById("enable_translation_key");
 const timer_translate_input = document.getElementById("timer_translate");
 const submit_button = document.getElementById("submit");
 
@@ -40,7 +39,7 @@ function string_to_CharCode(str) {
 		return str.charCodeAt(0);
 }
 
-//Checks if a translation key combination contains 
+//Checks if a translation key combination contains a key that isn't Ctrl, Shift, or Alt
 function contains_nonmodifier_key (translation_key_str) {
 	let key_array = displayed_translation_key.split("+").filter(word => word != "Shift" && word != "Ctrl" && word != "Alt");
 	return key_array.length > 0;
@@ -51,9 +50,9 @@ ipcRenderer.on("initial_settings", function(event, arg) {
 	language_1_input.value = arg.language_1;
 	language_2_input.value = arg.language_2;
 	translation_key_input.value = arg.translation_key;
+	scale_factor_input.value = arg.scale_factor;
 	automatic_timer_input.value = arg.timer_interval;
 	timer_translate_input.checked = arg.timer_translate_enabled;
-	enable_translation_key.checked = arg.translation_key_enabled;
 });
 
 //
@@ -70,7 +69,6 @@ language_2_input.addEventListener("input", () => {
 
 //Prevents doubling up of translation key input on-screen
 translation_key_input.addEventListener("input", () => {
-	console.log("translation_key_input.value: " + translation_key_input.value + "  displayed_translation_key: " + displayed_translation_key)
 	if (translation_key_input.value !== displayed_translation_key)
 		translation_key_input.value = displayed_translation_key;
 })
@@ -120,8 +118,17 @@ automatic_timer_input.addEventListener("input", () => {
 	ipcRenderer.send("timer_interval_selected", validated_timer_value)
 })
 
-enable_translation_key_input.addEventListener("input", () => {
-	ipcRenderer.send("enable_translation_key_input_changed", enable_translation_key_input.checked);
+scale_factor_input.addEventListener("input", () => {
+	let validated_scale_factor_value = scale_factor_input.value;
+	if(validated_scale_factor_value < 0.1){
+		validated_scale_factor_value = 0.1;
+		scale_factor_input.value = 0.1;
+	} else if (validated_scale_factor_value > 2) {
+		validated_scale_factor_value = 2;
+		scale_factor_input.value = 2;
+	}
+	
+	ipcRenderer.send("scale_factor_selected", validated_scale_factor_value);
 })
 
 timer_translate_input.addEventListener("input", () => {
