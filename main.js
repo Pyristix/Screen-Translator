@@ -50,9 +50,7 @@ async function translateScreen() {
 	}
 		
 	await screenshot({filename: path.join(app.getPath("userData"),"screen.png")});
-	
-	let text_block_array = null;
-	text_block_array = await googleVisionDetect();
+	let text_block_array = await googleVisionDetect();
 	
 	if(text_block_array.length === 0)
 		return;
@@ -62,7 +60,12 @@ async function translateScreen() {
 		let y = Math.round(Math.min(text_block_array[i].boundingBox[0].y, text_block_array[i].boundingBox[1].y, text_block_array[i].boundingBox[2].y, text_block_array[i].boundingBox[3].y)*settings.scale_factor);
 		let width = Math.round((Math.max(text_block_array[i].boundingBox[0].x, text_block_array[i].boundingBox[1].x, text_block_array[i].boundingBox[2].x, text_block_array[i].boundingBox[3].x)*settings.scale_factor - x));
 		let height = Math.round((Math.max(text_block_array[i].boundingBox[0].y, text_block_array[i].boundingBox[1].y, text_block_array[i].boundingBox[2].y, text_block_array[i].boundingBox[3].y)*settings.scale_factor - y));
-		translation_window_array.push(new BrowserWindow({
+		
+		const translation = await getDeepLTranslation(text_block_array[i].text);
+		if (getRegex(settings.language_1).test(translation))
+			continue;
+		
+		let translation_window = new BrowserWindow({
 			x: x,
 			y: y,
 			width: width,
@@ -74,17 +77,16 @@ async function translateScreen() {
 				nodeIntegration: true,
 				contextIsolation: false
 			}
-		}));
-		translations_up = true;
-	}
-	
-	for (let i = 0; i < translation_window_array.length; i++){
-		const translation = await getDeepLTranslation(text_block_array[i].text);
-		translation_window_array[i].loadFile("resources/html/translation_box.html");
-		translation_window_array[i].setAlwaysOnTop(true);
-		translation_window_array[i].webContents.on("did-finish-load", () => {
-			translation_window_array[i].webContents.send("send_translation", translation);
 		});
+		translation_window_array.push(translation_window);
+		
+		translation_window.loadFile("resources/html/translation_box.html");
+		translation_window.setAlwaysOnTop(true);
+		translation_window.webContents.on("did-finish-load", () => {
+			translation_window.webContents.send("send_translation", translation);
+		});
+		
+		translations_up = true;
 	}
 	
 	translations_up = true;
@@ -119,24 +121,37 @@ async function googleVisionDetect() {
 	}
 
 	if(adjusted_text_array.length > 0)
-		return languageFilterText(adjusted_text_array);
+		return languageFilterText(adjusted_text_array, settings.language_1, true);
 	
 	return adjusted_text_array;
 }
 
-//Filters out blocks of text that don't contain instances of language_1
-function languageFilterText(adjusted_text_array) {
-	let accepted_regex = null;
+//Returns proper regex based on target language
+function getRegex(target_language) {
+	if (target_language === "JA")
+		return new RegExp("[一-龠]|[ぁ-ゔ]|[ァ-ヴー]|[々〆〤]");
+	else 
+		return new RegExp("[a-zA-Z]");
+}
+
+//Filters either in or out blocks of text that contain instances of the target_language
+function languageFilterText(adjusted_text_array, target_language, filter_in_not_out) {
+	let accepted_regex = getRegex(target_language);
 	let language_filtered_array = [];
 	
-	if (settings.language_1 === "JA")
-		accepted_regex = new RegExp("[一-龠]|[ぁ-ゔ]|[ァ-ヴー]|[々〆〤]");
-	else 
-		accepted_regex = new RegExp("[a-zA-Z]");
-	
-	for (let i = 0; i < adjusted_text_array.length; i++)
-		if(accepted_regex.test(adjusted_text_array[i].text))
-			language_filtered_array.push(adjusted_text_array[i]);
+	for (let i = 0; i < adjusted_text_array.length; i++){
+		if(filter_in_not_out){
+			if(accepted_regex.test(adjusted_text_array[i].text))
+				language_filtered_array.push(adjusted_text_array[i]);
+			else
+				continue;
+		}else{
+			if(accepted_regex.test(adjusted_text_array[i].text))
+				continue;
+			else
+				language_filtered_array.push(adjusted_text_array[i]);
+		}
+	}
 		
 	return language_filtered_array;
 }
