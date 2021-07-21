@@ -16,6 +16,7 @@ function createWindow () {
 		width: 550,
 		height: 410,
 		icon: "resources/images/icon.ico",
+		show: false,
 		webPreferences: {
 			nodeIntegration: true,
 			contextIsolation: false
@@ -29,6 +30,10 @@ function createWindow () {
 	win.webContents.on("did-finish-load", () => {
 		loadSettings(win);
 	});
+	
+	win.once('ready-to-show', () => {
+		win.show()
+	})
 	
 	win.on("close", function () {
 		for (let i = 0; i < translation_window_array.length; i++)
