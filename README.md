@@ -1,12 +1,13 @@
 # Screen Translator
+An Electron.js-based Windows application for automatically translating on-screen text.
 
-An Electron.js-based Windows application for automatically translating on-screen text. 
+### Technologies used
+- Node.js & Electron.js
+- JavaScript, HTML5, & CSS3
+- Cloud Vision API
+- DeepL API<br>
 
-## Example Images
-
-
-
-## Installation instructions
+## Installation
 
 1. Download the installer from the front page of the website and install:
 [In Progress]
@@ -17,14 +18,14 @@ An Electron.js-based Windows application for automatically translating on-screen
 
 4. Create a service account key and rename the corresponding JSON file to "credentials.json". 
 
-5. Put "credentials.json" in C:\Users\[Your Username]\Appdata\Roaming\Screen Translator
+5. Put "credentials.json" in C:\Users\\[Your Username]\Appdata\Roaming\Screen Translator
 
-### Technologies Used
 
-- Node.js
-- Electron.js
-- Javascript
-- HTML
-- CSS
-- Cloud Vision API
-- DeepL API
+
+## Example Images
+
+Example usage:<br>
+<img src="screen-translator-usage.gif" width="500"> <br><br>
+Settings menu:<br>
+<img src="https://user-images.githubusercontent.com/61607183/126567637-4e802562-f8e7-4d98-af87-dbf2baf9b53b.png" width="500"><br><br>
+
