@@ -26,7 +26,9 @@ function createWindow () {
 	win.resizable = false;
 	win.loadFile("resources/html/settings.html");
 	
-	loadSettings(win);
+	win.webContents.on("did-finish-load", () => {
+		loadSettings(win);
+	});
 	
 	win.on("close", function () {
 		for (let i = 0; i < translation_window_array.length; i++)
@@ -47,7 +49,7 @@ async function translateScreen() {
 		return;
 	}
 		
-	await screenshot({filename: "./resources/screen.png"});
+	await screenshot({filename: path.join(app.getPath("userData"),"screen.png")});
 	
 	let text_block_array = null;
 	text_block_array = await googleVisionDetect();
@@ -90,7 +92,7 @@ async function translateScreen() {
 
 //Returns an array of objects containing blocks of text in the desired language and their bounding boxes
 async function googleVisionDetect() {
-	const detected_text_array = await client.textDetection('./resources/screen.png');
+	const detected_text_array = await client.textDetection(path.join(app.getPath("userData"),"screen.png"));
 	let adjusted_text_array = [];
 	
 	try{
@@ -157,7 +159,7 @@ function getDeepLTranslation(text_to_translate) {
 
 //Saves settings to config.json
 function saveSettings() {
-	fs.writeFile("config.json", JSON.stringify(settings), (err) => {
+	fs.writeFile(path.join(app.getPath("userData"),"config.json"), JSON.stringify(settings), (err) => {
 		if(err) 
 			console.log(err);
 	});
@@ -165,35 +167,48 @@ function saveSettings() {
 
 //Loads settings from config.json into settings object, sends initial settings to renderer, and registers translation key hotkey
 function loadSettings(win) {
-	return new Promise((resolve, reject) => {
-		fs.readFile("config.json", function(err, buf) {
-			if (err)
-				console.log(err);
-			else{
-				settings = JSON.parse(buf);
-				resolve();
-			}
+	return new Promise((resolve, reject) => { //Check if config file exists and if not, create it.
+		if(!fs.existsSync(path.join(app.getPath("userData"),"config.json"))){
+			win.webContents.send("console_log", "Saving Default Settings")
+			saveDefaultSettings(resolve, reject);
+		}
+		else
+			resolve();
+	}).then(() => { //Reads config file and changes settings based on it
+		return new Promise((resolve, reject) => {
+			fs.readFile(path.join(app.getPath("userData"),"config.json"), function(err, buf) {
+				if (err)
+					console.log(err);
+				else{
+					settings = JSON.parse(buf);
+					resolve();
+				}
+			});
 		});
-	}).then(() => {	
+	}).then(() => {	//Registers translation key and sends initial settings to renderer
 		if(settings.translation_key !== "")
 			globalShortcut.register(settings.translation_key, () => {translateScreen()});
-		win.webContents.on("did-finish-load", () => {win.webContents.send("initial_settings", settings);});
+		win.webContents.send("initial_settings", settings);
 	});
 }
 
 //Saves default settings to config.json
-function saveDefaultSettings() {
-	fs.writeFile("config.json", JSON.stringify(
+function saveDefaultSettings(resolve, reject) {
+	fs.writeFile(path.join(app.getPath("userData"),"config.json"), JSON.stringify(
 		{language_1: "JA", 
 		 language_2: "EN", 
 		 translation_key: "Ctrl+Shift+A", 
-		 scale_factor: 0.66,
+		 scale_factor: 0.66666,
 		 timer_interval: 5, 
-		 timer_translate_enabled: true
+		 timer_translate_enabled: false
 		}), 
 		(err) => {
-			if(err) 
+			if(err) {
 				console.log(err);
+				reject();
+			} else {
+				resolve();
+			}
 		}
 	);
 }
@@ -244,7 +259,7 @@ function setIpcListeners() {
 //Creates window when the app is ready and sets Google Vision credentials
 app.whenReady().then(() => {
 	createWindow();
-	process.env.GOOGLE_APPLICATION_CREDENTIALS = "./resources/credentials.json";
+	process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(app.getPath("userData"),"credentials.json");
 })
 
 //Starts up Google Vision instance

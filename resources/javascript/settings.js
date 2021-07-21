@@ -55,6 +55,12 @@ ipcRenderer.on("initial_settings", function(event, arg) {
 	timer_translate_input.checked = arg.timer_translate_enabled;
 });
 
+//Listener for debugging
+ipcRenderer.on("console_log", function(event, arg) {
+	console.log(arg);
+})
+
+
 //
 //	Sends events to main process when settings are changed
 //
