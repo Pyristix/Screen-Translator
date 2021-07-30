@@ -9,8 +9,8 @@ An Electron.js-based Windows application for automatically translating on-screen
 
 ## Installation
 
-1. Download the installer from the front page of the website and install:
-[In Progress]
+1. Download the installer from the front page of the website and install: <br>
+https://screentranslator.herokuapp.com/
 
 2. Create a Google Cloud project and enable Cloud Vision API. 
 
