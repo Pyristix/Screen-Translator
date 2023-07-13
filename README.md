@@ -1,4 +1,4 @@
-# Note: Installation isn't supported anymore. This repository is purely for archiving.
+<b> Note: Installation isn't supported anymore. This repository is purely an archive. <b/>
 
 # Screen Translator
 An Electron.js-based Windows application for automatically translating on-screen text.
